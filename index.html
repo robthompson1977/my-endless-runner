@@ -65,7 +65,7 @@
             display: flex;
             flex-direction: column;
             justify-content: space-between;
-            padding: 20px;
+            padding: 15px;
             pointer-events: none;
         }
 
@@ -75,6 +75,40 @@
             font-weight: bold;
             font-size: 1.2rem;
             text-shadow: 0 0 8px #00f6ff, 0 0 12px #ff007f;
+        }
+
+        /* On-Screen Touch Controls */
+        #touch-controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            grid-template-rows: 1fr 1fr;
+            gap: 10px;
+            width: 100%;
+            height: 160px;
+            pointer-events: auto;
+            margin-bottom: 10px;
+        }
+
+        .t-btn {
+            background: rgba(255, 0, 127, 0.2);
+            border: 2px solid #00f6ff;
+            color: #fff;
+            font-family: inherit;
+            font-size: 1.2rem;
+            font-weight: bold;
+            border-radius: 8px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(4px);
+            text-shadow: 0 0 5px #00f6ff;
+            box-shadow: inset 0 0 10px rgba(0, 246, 255, 0.3);
+        }
+
+        .t-btn:active {
+            background: rgba(0, 246, 255, 0.4);
+            border-color: #ff007f;
+            transform: scale(0.95);
         }
 
         .screen {
@@ -92,6 +126,7 @@
             padding: 20px;
             pointer-events: auto;
             backdrop-filter: blur(4px);
+            z-index: 30;
         }
 
         h1 {
@@ -132,13 +167,6 @@
         .hidden {
             display: none !important;
         }
-
-        #controls-hint {
-            font-size: 0.8rem;
-            color: #00f6ff;
-            opacity: 0.8;
-            margin-top: 15px;
-        }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
@@ -152,13 +180,20 @@
                 <div>SCORE: <span id="score">0</span></div>
                 <div>HIGH: <span id="highscore">0</span></div>
             </div>
+
+            <!-- Arcade Touch Control Grid -->
+            <div id="touch-controls">
+                <div style="grid-column: 2;" class="t-btn" id="btn-jump">▲ JUMP</div>
+                <div style="grid-column: 1; grid-row: 2;" class="t-btn" id="btn-left">◀ LEFT</div>
+                <div style="grid-column: 2; grid-row: 2;" class="t-btn" id="btn-slide">▼ SLIDE</div>
+                <div style="grid-column: 3; grid-row: 2;" class="t-btn" id="btn-right">RIGHT ▶</div>
+            </div>
         </div>
 
         <div id="start-screen" class="screen">
             <h1>CYBER RUN 84</h1>
-            <p>SWIPE Left/Right to Dodge<br>SWIPE Up to Jump | Down to Roll</p>
+            <p>Use Buttons or Swipe<br>Jump over Cyan hurdles | Slide under Orange barriers!</p>
             <button id="start-btn" class="btn">INSERT COIN</button>
-            <div id="controls-hint">Desktop: Arrow Keys / WASD</div>
         </div>
 
         <div id="gameover-screen" class="screen hidden">
@@ -169,52 +204,37 @@
     </div>
 
     <script>
-        // Audio Synthesizer (No external sound files required)
         class SoundFX {
-            constructor() {
-                this.ctx = null;
-            }
-
+            constructor() { this.ctx = null; }
             init() {
-                if (!this.ctx) {
-                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
-                }
+                if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)();
             }
-
             playJump() {
                 if (!this.ctx) return;
-                let osc = this.ctx.createOscillator();
-                let gain = this.ctx.createGain();
-                osc.connect(gain);
-                gain.connect(this.ctx.destination);
+                let osc = this.ctx.createOscillator(), gain = this.ctx.createGain();
+                osc.connect(gain); gain.connect(this.ctx.destination);
                 osc.type = 'sine';
                 osc.frequency.setValueAtTime(150, this.ctx.currentTime);
                 osc.frequency.exponentialRampToValueAtTime(600, this.ctx.currentTime + 0.15);
                 gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
                 gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.15);
-                osc.start();
-                osc.stop(this.ctx.currentTime + 0.15);
+                osc.start(); osc.stop(this.ctx.currentTime + 0.15);
             }
-
             playCrash() {
                 if (!this.ctx) return;
-                let osc = this.ctx.createOscillator();
-                let gain = this.ctx.createGain();
-                osc.connect(gain);
-                gain.connect(this.ctx.destination);
+                let osc = this.ctx.createOscillator(), gain = this.ctx.createGain();
+                osc.connect(gain); gain.connect(this.ctx.destination);
                 osc.type = 'sawtooth';
                 osc.frequency.setValueAtTime(100, this.ctx.currentTime);
                 osc.frequency.linearRampToValueAtTime(30, this.ctx.currentTime + 0.3);
                 gain.gain.setValueAtTime(0.5, this.ctx.currentTime);
                 gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.3);
-                osc.start();
-                osc.stop(this.ctx.currentTime + 0.3);
+                osc.start(); osc.stop(this.ctx.currentTime + 0.3);
             }
         }
 
         const sfx = new SoundFX();
 
-        // Game Setup
         const container = document.getElementById('game-container');
         const scoreEl = document.getElementById('score');
         const highscoreEl = document.getElementById('highscore');
@@ -224,42 +244,36 @@
         const startBtn = document.getElementById('start-btn');
         const restartBtn = document.getElementById('restart-btn');
 
-        let scene, camera, renderer;
-        let player, playerGrid;
+        let scene, camera, renderer, player;
         let obstacles = [];
-        let gridLines = [];
         let gameActive = false;
         let score = 0;
         let highscore = localStorage.getItem('cyber_runner_hi') || 0;
         highscoreEl.innerText = highscore;
 
-        // Player Motion States
-        const LANES = [-2.2, 0, 2.2];
-        let currentLane = 1; // 0: Left, 1: Center, 2: Right
-        let targetX = 0;
+        const LANES = [-1.8, 0, 1.8];
+        let currentLane = 1;
         let isJumping = false;
         let isRolling = false;
         let jumpVelocity = 0;
-        let playerY = 0.5;
-        let speed = 0.4;
+        let speed = 0.35;
         let spawnTimer = 0;
 
         function initThree() {
             scene = new THREE.Scene();
             scene.background = new THREE.Color(0x0d0221);
-            scene.fog = new THREE.FogExp2(0x0d0221, 0.03);
+            scene.fog = new THREE.FogExp2(0x0d0221, 0.025);
 
-            camera = new THREE.PerspectiveCamera(60, container.clientWidth / container.clientHeight, 0.1, 100);
-            camera.position.set(0, 3, 7);
-            camera.lookAt(0, 1, 0);
+            camera = new THREE.PerspectiveCamera(70, container.clientWidth / container.clientHeight, 0.1, 100);
+            camera.position.set(0, 3.2, 6.5);
+            camera.lookAt(0, 1, -5);
 
             renderer = new THREE.WebGLRenderer({ antialias: true });
             renderer.setSize(container.clientWidth, container.clientHeight);
             renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
             container.appendChild(renderer.domElement);
 
-            // Ambient & Neon Lights
-            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
             scene.add(ambientLight);
 
             const dirLight = new THREE.DirectionalLight(0xff007f, 1.2);
@@ -267,22 +281,22 @@
             scene.add(dirLight);
 
             // Synthwave Grid Floor
-            const gridGeo = new THREE.PlaneGeometry(30, 100, 30, 50);
+            const gridGeo = new THREE.PlaneGeometry(20, 100, 20, 50);
             const gridMat = new THREE.MeshBasicMaterial({ color: 0x00f6ff, wireframe: true });
             const floor = new THREE.Mesh(gridGeo, gridMat);
             floor.rotation.x = -Math.PI / 2;
             floor.position.z = -40;
             scene.add(floor);
 
-            // Player Setup (Neon Blocky Runner)
+            // Player Setup
             const pGroup = new THREE.Group();
             const bodyGeo = new THREE.BoxGeometry(0.8, 1.2, 0.8);
+            bodyGeo.computeBoundingSphere();
             const bodyMat = new THREE.MeshPhongMaterial({ color: 0xff007f, emissive: 0x550022 });
             const body = new THREE.Mesh(bodyGeo, bodyMat);
             body.position.y = 0.6;
             pGroup.add(body);
 
-            // Visor
             const visorGeo = new THREE.BoxGeometry(0.7, 0.3, 0.2);
             const visorMat = new THREE.MeshBasicMaterial({ color: 0x00f6ff });
             const visor = new THREE.Mesh(visorGeo, visorMat);
@@ -290,6 +304,7 @@
             pGroup.add(visor);
 
             player = pGroup;
+            player.frustumCulled = false;
             player.position.set(0, 0, 0);
             scene.add(player);
 
@@ -298,44 +313,56 @@
 
         function spawnObstacle() {
             const lane = Math.floor(Math.random() * 3);
-            const type = Math.random(); // 0-0.5: Low hurdle, 0.5-0.8: High block, 0.8-1.0: Full Wall
+            const type = Math.random();
 
             let obsGeo, obsMat, yPos, height;
 
-            if (type < 0.5) {
-                // Low barrier (Jump over)
-                height = 0.6;
-                yPos = 0.3;
+            if (type < 0.45) {
+                // Low barrier (Jump over): Low profile
+                height = 0.5; yPos = 0.25;
                 obsMat = new THREE.MeshPhongMaterial({ color: 0x00f6ff, emissive: 0x004455 });
-            } else if (type < 0.8) {
-                // High block (Duck under or dodge)
-                height = 1.2;
-                yPos = 1.4;
+            } else if (type < 0.75) {
+                // High block (Slide under): Raised up high
+                height = 1.0; yPos = 1.6;
                 obsMat = new THREE.MeshPhongMaterial({ color: 0xffaa00, emissive: 0x442200 });
             } else {
                 // Tall barrier (Must dodge)
-                height = 2.2;
-                yPos = 1.1;
+                height = 2.2; yPos = 1.1;
                 obsMat = new THREE.MeshPhongMaterial({ color: 0xff0055, emissive: 0x550011 });
             }
 
-            obsGeo = new THREE.BoxGeometry(1.5, height, 1);
+            obsGeo = new THREE.BoxGeometry(1.4, height, 0.8);
             const obs = new THREE.Mesh(obsGeo, obsMat);
-            obs.position.set(LANES[lane], yPos, -50);
-            obs.userData = { type: type < 0.5 ? 'low' : type < 0.8 ? 'high' : 'tall', height: height, lane: lane };
+            obs.position.set(LANES[lane], yPos, -45);
+            obs.userData = { type: type < 0.45 ? 'low' : type < 0.75 ? 'high' : 'tall', lane: lane };
 
             scene.add(obs);
             obstacles.push(obs);
+        }
+
+        function moveLeft() { if (gameActive && currentLane > 0) currentLane--; }
+        function moveRight() { if (gameActive && currentLane < 2) currentLane++; }
+        function doJump() {
+            if (gameActive && !isJumping) {
+                isJumping = true;
+                jumpVelocity = 0.34; // Stronger jump force to clear low barriers easily
+                sfx.playJump();
+            }
+        }
+        function doSlide() {
+            if (gameActive && !isRolling) {
+                isRolling = true;
+                setTimeout(() => { isRolling = false; }, 650); // Longer slide duration
+            }
         }
 
         function resetGame() {
             obstacles.forEach(o => scene.remove(o));
             obstacles = [];
             currentLane = 1;
-            targetX = 0;
             player.position.set(0, 0, 0);
             score = 0;
-            speed = 0.45;
+            speed = 0.35;
             scoreEl.innerText = '0';
             gameActive = true;
         }
@@ -355,35 +382,39 @@
         function update() {
             if (!gameActive) return;
 
-            // Lane Transition Smoothness
-            targetX = LANES[currentLane];
-            player.position.x += (targetX - player.position.x) * 0.2;
+            // Smooth Lane Movement
+            let targetX = LANES[currentLane];
+            player.position.x += (targetX - player.position.x) * 0.25;
+
+            camera.position.x = player.position.x * 0.3;
 
             // Jump Dynamics
             if (isJumping) {
                 player.position.y += jumpVelocity;
-                jumpVelocity -= 0.025; // Gravity
+                jumpVelocity -= 0.02; // Slightly lower gravity for better float
                 if (player.position.y <= 0) {
                     player.position.y = 0;
                     isJumping = false;
                 }
             }
 
-            // Roll Dynamics
+            // Slide Dynamics (Flattens player height to crouch)
             if (isRolling) {
-                player.scale.y = 0.5;
-            } else {
+                player.scale.y = 0.3;
+                player.position.y = 0.18;
+            } else if (!isJumping) {
                 player.scale.y = 1.0;
+                player.position.y = 0;
             }
 
-            // Move & Spawn Obstacles
+            // Obstacle Spawning
             spawnTimer++;
-            if (spawnTimer > Math.max(20, 60 - Math.floor(speed * 20))) {
+            if (spawnTimer > Math.max(25, 55 - Math.floor(speed * 20))) {
                 spawnObstacle();
                 spawnTimer = 0;
             }
 
-            speed += 0.0001; // Gradual Speed Increase
+            speed += 0.00008;
             score += speed * 0.5;
             scoreEl.innerText = Math.floor(score);
 
@@ -391,12 +422,18 @@
                 let obs = obstacles[i];
                 obs.position.z += speed;
 
-                // Collision Detection
-                if (Math.abs(obs.position.z - player.position.z) < 0.8) {
+                // Precision Hitbox Check
+                if (Math.abs(obs.position.z - player.position.z) < 0.5) {
                     if (obs.userData.lane === currentLane) {
                         let hit = false;
-                        if (obs.userData.type === 'low' && player.position.y < 0.5) hit = true;
+                        
+                        // Low Hurdle: Requires player jump height > 0.45
+                        if (obs.userData.type === 'low' && player.position.y <= 0.45) hit = true;
+                        
+                        // High Barrier: Requires player to be sliding (isRolling)
                         if (obs.userData.type === 'high' && !isRolling) hit = true;
+                        
+                        // Tall Wall: Cannot be jumped over or slid under
                         if (obs.userData.type === 'tall') hit = true;
 
                         if (hit) {
@@ -406,7 +443,6 @@
                     }
                 }
 
-                // Cleanup Off-Screen
                 if (obs.position.z > 5) {
                     scene.remove(obs);
                     obstacles.splice(i, 1);
@@ -420,52 +456,18 @@
             renderer.render(scene, camera);
         }
 
-        // Swipe Controls Logic
-        let touchStartX = 0;
-        let touchStartY = 0;
+        // Touch Control Bindings
+        document.getElementById('btn-left').addEventListener('pointerdown', moveLeft);
+        document.getElementById('btn-right').addEventListener('pointerdown', moveRight);
+        document.getElementById('btn-jump').addEventListener('pointerdown', doJump);
+        document.getElementById('btn-slide').addEventListener('pointerdown', doSlide);
 
-        container.addEventListener('touchstart', e => {
-            touchStartX = e.changedTouches[0].screenX;
-            touchStartY = e.changedTouches[0].screenY;
-        }, false);
-
-        container.addEventListener('touchend', e => {
-            if (!gameActive) return;
-            let diffX = e.changedTouches[0].screenX - touchStartX;
-            let diffY = e.changedTouches[0].screenY - touchStartY;
-
-            if (Math.abs(diffX) > Math.abs(diffY)) {
-                // Horizontal Swipe
-                if (diffX > 30 && currentLane < 2) currentLane++;
-                if (diffX < -30 && currentLane > 0) currentLane--;
-            } else {
-                // Vertical Swipe
-                if (diffY < -30 && !isJumping) {
-                    isJumping = true;
-                    jumpVelocity = 0.35;
-                    sfx.playJump();
-                }
-                if (diffY > 30 && !isRolling) {
-                    isRolling = true;
-                    setTimeout(() => { isRolling = false; }, 600);
-                }
-            }
-        }, false);
-
-        // Keyboard Controls (Desktop Support)
+        // Keyboard Controls
         window.addEventListener('keydown', e => {
-            if (!gameActive) return;
-            if ((e.key === 'ArrowLeft' || e.key === 'a') && currentLane > 0) currentLane--;
-            if ((e.key === 'ArrowRight' || e.key === 'd') && currentLane < 2) currentLane++;
-            if ((e.key === 'ArrowUp' || e.key === 'w') && !isJumping) {
-                isJumping = true;
-                jumpVelocity = 0.35;
-                sfx.playJump();
-            }
-            if ((e.key === 'ArrowDown' || e.key === 's') && !isRolling) {
-                isRolling = true;
-                setTimeout(() => { isRolling = false; }, 600);
-            }
+            if (e.key === 'ArrowLeft' || e.key === 'a') moveLeft();
+            if (e.key === 'ArrowRight' || e.key === 'd') moveRight();
+            if (e.key === 'ArrowUp' || e.key === 'w') doJump();
+            if (e.key === 'ArrowDown' || e.key === 's') doSlide();
         });
 
         function onWindowResize() {
