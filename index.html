@@ -1,858 +1,492 @@
 <!DOCTYPE html>
-<html lang="en" class="h-full select-none overflow-hidden bg-black">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>CYBER RUNNER 1984</title>
-
-    <!-- Tailwind CSS CDN -->
-    <script src="https://cdn.tailwindcss.com"></script>
-
-    <!-- Google Fonts for Retro Arcade Vibe -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Orbitron:wght@500;800;900&display=swap" rel="stylesheet">
-
-    <!-- Three.js 3D Engine CDN -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Retro Runner 84</title>
     <style>
-        /* Custom Font Assignments */
-        .font-arcade { font-family: 'Press Start 2P', monospace; }
-        .font-cyber { font-family: 'Orbitron', sans-serif; }
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: none;
+        }
 
-        /* CRT Overlay Effect */
-        .crt::before {
-            content: " ";
+        body {
+            background-color: #0d0221;
+            color: #00f6ff;
+            font-family: 'Courier New', Courier, monospace;
+            overflow: hidden;
+            height: 100vh;
+            width: 100vw;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #game-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            max-width: 600px;
+            max-height: 900px;
+            overflow: hidden;
+            box-shadow: 0 0 20px #ff007f;
+        }
+
+        canvas {
             display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        .crt-overlay {
             position: absolute;
-            top: 0; left: 0; bottom: 0; right: 0;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
             background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            background-size: 100% 4px, 6px 100%;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        #ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
             z-index: 20;
-            background-size: 100% 3px, 6px 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 20px;
             pointer-events: none;
         }
 
-        /* Glass Glow and Retro Borders */
-        .retro-border {
-            border: 3px solid #ff007f;
-            box-shadow: 0 0 15px #ff007f, inset 0 0 15px #ff007f;
+        .hud {
+            display: flex;
+            justify-content: space-between;
+            font-weight: bold;
+            font-size: 1.2rem;
+            text-shadow: 0 0 8px #00f6ff, 0 0 12px #ff007f;
         }
 
-        .retro-border-cyan {
-            border: 3px solid #00f3ff;
-            box-shadow: 0 0 15px #00f3ff, inset 0 0 15px #00f3ff;
+        .screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(13, 2, 33, 0.85);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 20px;
+            pointer-events: auto;
+            backdrop-filter: blur(4px);
         }
 
-        /* Glowing Text Utilities */
-        .glow-pink {
-            text-shadow: 0 0 8px #ff007f, 0 0 20px #ff007f;
+        h1 {
+            font-size: 2.5rem;
+            color: #ff007f;
+            text-shadow: 3px 3px 0px #00f6ff, 0 0 15px #ff007f;
+            margin-bottom: 10px;
+            letter-spacing: 2px;
         }
 
-        .glow-cyan {
-            text-shadow: 0 0 8px #00f3ff, 0 0 20px #00f3ff;
+        p {
+            color: #ffffff;
+            margin-bottom: 20px;
+            font-size: 1rem;
+            text-shadow: 0 0 5px #00f6ff;
+            line-height: 1.4;
         }
 
-        .glow-yellow {
-            text-shadow: 0 0 8px #ffe600, 0 0 20px #ffe600;
+        .btn {
+            background: linear-gradient(45deg, #ff007f, #7928ca);
+            border: 2px solid #00f6ff;
+            color: #fff;
+            padding: 12px 30px;
+            font-family: inherit;
+            font-size: 1.2rem;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 0 10px #ff007f;
+            text-transform: uppercase;
+            transition: all 0.2s ease;
         }
 
-        /* Prevent Touch Highlights on Mobile */
-        * {
-            -webkit-tap-highlight-color: transparent;
-            user-select: none;
+        .btn:active {
+            transform: scale(0.95);
+            box-shadow: 0 0 20px #00f6ff;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        #controls-hint {
+            font-size: 0.8rem;
+            color: #00f6ff;
+            opacity: 0.8;
+            margin-top: 15px;
         }
     </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
-<body class="h-full w-full bg-black text-white crt overflow-hidden relative font-cyber">
+<body>
 
-    <!-- 3D Canvas Container -->
-    <div id="canvas-container" class="absolute inset-0 w-full h-full z-0"></div>
-
-    <!-- Retro HUD Overlay -->
-    <div id="hud" class="absolute inset-0 z-10 pointer-events-none p-4 flex flex-col justify-between">
+    <div id="game-container">
+        <div class="crt-overlay"></div>
         
-        <!-- Top Bar: Scores & Stats -->
-        <div class="flex justify-between items-start pt-2 px-2">
-            <!-- Left: Score & Multiplier -->
-            <div class="flex flex-col gap-1">
-                <div class="text-xs text-cyan-400 font-arcade tracking-wider">SCORE</div>
-                <div id="score-val" class="text-3xl md:text-5xl font-extrabold text-white glow-cyan tracking-wider">000000</div>
-                <div class="text-xs text-yellow-400 font-arcade mt-1">COINS: <span id="coin-val" class="glow-yellow">0</span></div>
-            </div>
-
-            <!-- Right: High Score & Speed -->
-            <div class="flex flex-col items-end gap-1">
-                <div class="text-xs text-pink-500 font-arcade tracking-wider">HIGH SCORE</div>
-                <div id="highscore-val" class="text-xl md:text-3xl font-bold text-pink-400 glow-pink">000000</div>
-                <div id="speed-val" class="text-xs font-arcade text-emerald-400 mt-2">100 MPH</div>
+        <div id="ui-layer">
+            <div class="hud">
+                <div>SCORE: <span id="score">0</span></div>
+                <div>HIGH: <span id="highscore">0</span></div>
             </div>
         </div>
 
-        <!-- Controls Hint / Sound Toggle Floating Button -->
-        <div class="flex justify-between items-end pb-4 px-2 pointer-events-auto">
-            <button id="sound-toggle" class="bg-slate-900/80 border border-cyan-500/50 hover:border-cyan-400 text-cyan-400 px-3 py-2 rounded text-xs font-arcade flex items-center gap-2 backdrop-blur-md">
-                <span id="sound-icon">🔊</span> AUDIO: ON
-            </button>
+        <div id="start-screen" class="screen">
+            <h1>CYBER RUN 84</h1>
+            <p>SWIPE Left/Right to Dodge<br>SWIPE Up to Jump | Down to Roll</p>
+            <button id="start-btn" class="btn">INSERT COIN</button>
+            <div id="controls-hint">Desktop: Arrow Keys / WASD</div>
+        </div>
 
-            <button id="crt-toggle" class="bg-slate-900/80 border border-pink-500/50 hover:border-pink-400 text-pink-400 px-3 py-2 rounded text-xs font-arcade flex items-center gap-2 backdrop-blur-md">
-                CRT FX: ON
-            </button>
+        <div id="gameover-screen" class="screen hidden">
+            <h1 style="color: #ff0055;">SYSTEM CRASH</h1>
+            <p>FINAL SCORE: <span id="final-score">0</span></p>
+            <button id="restart-btn" class="btn">TRY AGAIN</button>
         </div>
     </div>
 
-    <!-- Start / Title Screen Overlay -->
-    <div id="start-screen" class="absolute inset-0 z-30 flex flex-col items-center justify-center bg-black/85 backdrop-blur-sm p-6 text-center">
-        <div class="max-w-md w-full flex flex-col items-center gap-6">
-            <div class="space-y-2">
-                <h1 class="text-4xl md:text-6xl font-black italic tracking-wider text-transparent bg-clip-text bg-gradient-to-b from-cyan-300 via-pink-500 to-purple-600 glow-pink">
-                    CYBER<br>RUNNER
-                </h1>
-                <p class="text-xs font-arcade text-cyan-400 tracking-widest pt-2">SYNTHWAVE 1984 EDITION</p>
-            </div>
-
-            <!-- Control Instructions -->
-            <div class="bg-slate-900/90 retro-border-cyan p-4 rounded-lg w-full text-left space-y-3 text-xs md:text-sm">
-                <div class="text-pink-400 font-arcade text-center border-b border-slate-700 pb-2">CONTROLS</div>
-                <div class="flex justify-between items-center text-slate-300">
-                    <span>CHANGE LANES</span>
-                    <span class="text-cyan-400 font-semibold">SWIPE / ← → / A D</span>
-                </div>
-                <div class="flex justify-between items-center text-slate-300">
-                    <span>JUMP HURDLE</span>
-                    <span class="text-cyan-400 font-semibold">SWIPE UP / ↑ / W / SPACE</span>
-                </div>
-                <div class="flex justify-between items-center text-slate-300">
-                    <span>DUCK BARRIER</span>
-                    <span class="text-cyan-400 font-semibold">SWIPE DOWN / ↓ / S</span>
-                </div>
-            </div>
-
-            <button id="start-btn" class="w-full py-4 retro-border bg-pink-600 hover:bg-pink-500 text-white font-arcade text-sm md:text-base tracking-widest transform active:scale-95 transition-all shadow-lg cursor-pointer">
-                PRESS TO RUN
-            </button>
-        </div>
-    </div>
-
-    <!-- Game Over Screen Overlay -->
-    <div id="gameover-screen" class="hidden absolute inset-0 z-30 flex flex-col items-center justify-center bg-black/90 backdrop-blur-md p-6 text-center">
-        <div class="max-w-md w-full flex flex-col items-center gap-6">
-            <div>
-                <h2 class="text-4xl md:text-5xl font-black text-pink-500 glow-pink font-arcade tracking-wider animate-pulse">
-                    GAME OVER
-                </h2>
-                <p class="text-xs text-cyan-400 font-arcade mt-2">SYSTEM CRASH DETECTED</p>
-            </div>
-
-            <div class="bg-slate-900/90 retro-border p-5 rounded-lg w-full space-y-4">
-                <div class="flex justify-between items-center border-b border-slate-800 pb-2">
-                    <span class="text-xs text-slate-400 font-arcade">FINAL SCORE</span>
-                    <span id="go-score" class="text-2xl font-bold text-cyan-400 glow-cyan">0</span>
-                </div>
-                <div class="flex justify-between items-center border-b border-slate-800 pb-2">
-                    <span class="text-xs text-slate-400 font-arcade">CYBER ORBS</span>
-                    <span id="go-coins" class="text-xl font-bold text-yellow-400 glow-yellow">0</span>
-                </div>
-                <div class="flex justify-between items-center">
-                    <span class="text-xs text-slate-400 font-arcade">BEST SCORE</span>
-                    <span id="go-highscore" class="text-xl font-bold text-pink-400 glow-pink">0</span>
-                </div>
-            </div>
-
-            <button id="restart-btn" class="w-full py-4 retro-border-cyan bg-cyan-600 hover:bg-cyan-500 text-white font-arcade text-sm md:text-base tracking-widest transform active:scale-95 transition-all cursor-pointer">
-                RETRY RUN
-            </button>
-        </div>
-    </div>
-
-    <!-- Game Audio Synthesizer & Main Logic -->
     <script>
-        // --- Web Audio API Retro Sound Effects Synthesizer ---
-        class RetroAudio {
+        // Audio Synthesizer (No external sound files required)
+        class SoundFX {
             constructor() {
                 this.ctx = null;
-                this.enabled = true;
             }
 
             init() {
                 if (!this.ctx) {
-                    const AudioContext = window.AudioContext || window.webkitAudioContext;
-                    this.ctx = new AudioContext();
+                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
                 }
             }
 
-            playTone(freq, type, duration, gainVal = 0.1) {
-                if (!this.enabled || !this.ctx) return;
-                try {
-                    const osc = this.ctx.createOscillator();
-                    const gain = this.ctx.createGain();
-                    osc.type = type;
-                    osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
-                    gain.gain.setValueAtTime(gainVal, this.ctx.currentTime);
-                    gain.gain.exponentialRampToValueAtTime(0.0001, this.ctx.currentTime + duration);
-                    osc.connect(gain);
-                    gain.connect(this.ctx.destination);
-                    osc.start();
-                    osc.stop(this.ctx.currentTime + duration);
-                } catch (e) {}
+            playJump() {
+                if (!this.ctx) return;
+                let osc = this.ctx.createOscillator();
+                let gain = this.ctx.createGain();
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(150, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(600, this.ctx.currentTime + 0.15);
+                gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
+                gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.15);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.15);
             }
 
-            jump() {
-                if (!this.enabled || !this.ctx) return;
-                try {
-                    const osc = this.ctx.createOscillator();
-                    const gain = this.ctx.createGain();
-                    osc.type = 'square';
-                    osc.frequency.setValueAtTime(150, this.ctx.currentTime);
-                    osc.frequency.exponentialRampToValueAtTime(600, this.ctx.currentTime + 0.15);
-                    gain.gain.setValueAtTime(0.08, this.ctx.currentTime);
-                    gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.15);
-                    osc.connect(gain);
-                    gain.connect(this.ctx.destination);
-                    osc.start();
-                    osc.stop(this.ctx.currentTime + 0.15);
-                } catch(e) {}
-            }
-
-            coin() {
-                if (!this.enabled || !this.ctx) return;
-                this.playTone(987.77, 'sine', 0.08, 0.1); // B5
-                setTimeout(() => this.playTone(1318.51, 'sine', 0.15, 0.1), 60); // E6
-            }
-
-            slide() {
-                if (!this.enabled || !this.ctx) return;
-                try {
-                    const osc = this.ctx.createOscillator();
-                    const gain = this.ctx.createGain();
-                    osc.type = 'sawtooth';
-                    osc.frequency.setValueAtTime(300, this.ctx.currentTime);
-                    osc.frequency.exponentialRampToValueAtTime(80, this.ctx.currentTime + 0.2);
-                    gain.gain.setValueAtTime(0.08, this.ctx.currentTime);
-                    gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.2);
-                    osc.connect(gain);
-                    gain.connect(this.ctx.destination);
-                    osc.start();
-                    osc.stop(this.ctx.currentTime + 0.2);
-                } catch(e) {}
-            }
-
-            crash() {
-                if (!this.enabled || !this.ctx) return;
-                try {
-                    // White noise buffer for explosion sound
-                    const bufferSize = this.ctx.sampleRate * 0.4;
-                    const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
-                    const output = buffer.getChannelData(0);
-                    for (let i = 0; i < bufferSize; i++) {
-                        output[i] = Math.random() * 2 - 1;
-                    }
-                    const whiteNoise = this.ctx.createBufferSource();
-                    whiteNoise.buffer = buffer;
-
-                    const filter = this.ctx.createBiquadFilter();
-                    filter.type = 'lowpass';
-                    filter.frequency.setValueAtTime(800, this.ctx.currentTime);
-                    filter.frequency.linearRampToValueAtTime(50, this.ctx.currentTime + 0.4);
-
-                    const gain = this.ctx.createGain();
-                    gain.gain.setValueAtTime(0.25, this.ctx.currentTime);
-                    gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.4);
-
-                    whiteNoise.connect(filter);
-                    filter.connect(gain);
-                    gain.connect(this.ctx.destination);
-
-                    whiteNoise.start();
-                    whiteNoise.stop(this.ctx.currentTime + 0.4);
-                } catch(e) {}
+            playCrash() {
+                if (!this.ctx) return;
+                let osc = this.ctx.createOscillator();
+                let gain = this.ctx.createGain();
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(100, this.ctx.currentTime);
+                osc.frequency.linearRampToValueAtTime(30, this.ctx.currentTime + 0.3);
+                gain.gain.setValueAtTime(0.5, this.ctx.currentTime);
+                gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.3);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.3);
             }
         }
 
-        const audio = new RetroAudio();
+        const sfx = new SoundFX();
 
-        // --- Game Engine Variables ---
+        // Game Setup
+        const container = document.getElementById('game-container');
+        const scoreEl = document.getElementById('score');
+        const highscoreEl = document.getElementById('highscore');
+        const finalScoreEl = document.getElementById('final-score');
+        const startScreen = document.getElementById('start-screen');
+        const gameoverScreen = document.getElementById('gameover-screen');
+        const startBtn = document.getElementById('start-btn');
+        const restartBtn = document.getElementById('restart-btn');
+
         let scene, camera, renderer;
-        let playerGroup, playerBody, playerHead, playerLight;
-        let gridFloor, synthSun;
+        let player, playerGrid;
         let obstacles = [];
-        let coins = [];
-        let particles = [];
-
-        // Gameplay Constants & States
-        const LANES = [-3.2, 0, 3.2]; // Left, Center, Right X Positions
-        let currentLane = 1; // Start in middle
-        let targetX = LANES[1];
-        
-        let isRunning = false;
+        let gridLines = [];
+        let gameActive = false;
         let score = 0;
-        let coinCount = 0;
-        let highscore = parseInt(localStorage.getItem('cyber_runner_highscore') || '0');
-        let gameSpeed = 0.45;
-        const baseSpeed = 0.45;
+        let highscore = localStorage.getItem('cyber_runner_hi') || 0;
+        highscoreEl.innerText = highscore;
 
-        // Player Jump/Slide Physics
-        let playerY = 0;
-        let velocityY = 0;
-        const gravity = -0.022;
+        // Player Motion States
+        const LANES = [-2.2, 0, 2.2];
+        let currentLane = 1; // 0: Left, 1: Center, 2: Right
+        let targetX = 0;
         let isJumping = false;
-        let isSliding = false;
-        let slideTimer = 0;
+        let isRolling = false;
+        let jumpVelocity = 0;
+        let playerY = 0.5;
+        let speed = 0.4;
+        let spawnTimer = 0;
 
-        // Obstacle Spawner Timers
-        let distanceTraveled = 0;
-        let nextObstacleZ = -40;
-
-        // Setup HUD Elements
-        const scoreEl = document.getElementById('score-val');
-        const coinEl = document.getElementById('coin-val');
-        const highscoreEl = document.getElementById('highscore-val');
-        const speedEl = document.getElementById('speed-val');
-        
-        highscoreEl.innerText = String(highscore).padStart(6, '0');
-
-        // --- Three.js World Initialization ---
-        function initEngine() {
-            const container = document.getElementById('canvas-container');
-
-            // Scene setup
+        function initThree() {
             scene = new THREE.Scene();
-            scene.fog = new THREE.FogExp2(0x0a0015, 0.018); // Deep magenta/purple synth fog
+            scene.background = new THREE.Color(0x0d0221);
+            scene.fog = new THREE.FogExp2(0x0d0221, 0.03);
 
-            // Camera setup
-            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 200);
-            camera.position.set(0, 3.8, 7.5);
-            camera.rotation.x = -0.22;
+            camera = new THREE.PerspectiveCamera(60, container.clientWidth / container.clientHeight, 0.1, 100);
+            camera.position.set(0, 3, 7);
+            camera.lookAt(0, 1, 0);
 
-            // Renderer setup
-            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
-            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
             renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-            renderer.setClearColor(scene.fog.color);
             container.appendChild(renderer.domElement);
 
-            // Ambient & Directional Lighting
-            const ambientLight = new THREE.AmbientLight(0xffd5ff, 0.6);
+            // Ambient & Neon Lights
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
             scene.add(ambientLight);
 
-            const dirLight = new THREE.DirectionalLight(0x00ffff, 0.8);
-            dirLight.position.set(0, 20, -10);
+            const dirLight = new THREE.DirectionalLight(0xff007f, 1.2);
+            dirLight.position.set(5, 10, 7);
             scene.add(dirLight);
 
-            // Construct World Elements
-            createGridFloor();
-            createSynthSun();
-            createPlayer();
+            // Synthwave Grid Floor
+            const gridGeo = new THREE.PlaneGeometry(30, 100, 30, 50);
+            const gridMat = new THREE.MeshBasicMaterial({ color: 0x00f6ff, wireframe: true });
+            const floor = new THREE.Mesh(gridGeo, gridMat);
+            floor.rotation.x = -Math.PI / 2;
+            floor.position.z = -40;
+            scene.add(floor);
 
-            // Resize Event Listener
-            window.addEventListener('resize', onWindowResize, false);
-        }
-
-        // --- Synthwave Grid Environment ---
-        function createGridFloor() {
-            // Infinite moving grid texture substitute: two offset planes
-            const gridHelper = new THREE.GridHelper(120, 40, 0xff007f, 0x00f3ff);
-            gridHelper.position.set(0, 0, -30);
-            scene.add(gridHelper);
-            gridFloor = gridHelper;
-
-            // Track boundaries (Neon Rails)
-            [-4.8, -1.6, 1.6, 4.8].forEach(x => {
-                const railGeo = new THREE.BoxGeometry(0.1, 0.1, 120);
-                const railMat = new THREE.MeshBasicMaterial({ color: 0x00f3ff });
-                const rail = new THREE.Mesh(railGeo, railMat);
-                rail.position.set(x, 0.05, -30);
-                scene.add(rail);
-            });
-        }
-
-        function createSynthSun() {
-            const sunGeo = new THREE.CircleGeometry(25, 32);
-            const sunMat = new THREE.MeshBasicMaterial({
-                color: 0xff0055,
-                side: THREE.DoubleSide
-            });
-            synthSun = new THREE.Mesh(sunGeo, sunMat);
-            synthSun.position.set(0, 15, -110);
-            scene.add(synthSun);
-        }
-
-        // --- Low-Poly Cyber Character ---
-        function createPlayer() {
-            playerGroup = new THREE.Group();
-
-            // Body
-            const bodyGeo = new THREE.BoxGeometry(0.9, 1.3, 0.6);
-            const bodyMat = new THREE.MeshStandardMaterial({
-                color: 0x00ffff,
-                roughness: 0.2,
-                metalness: 0.8,
-                emissive: 0x004455
-            });
-            playerBody = new THREE.Mesh(bodyGeo, bodyMat);
-            playerBody.position.y = 1.15;
-            playerGroup.add(playerBody);
-
-            // Head / Visor
-            const headGeo = new THREE.BoxGeometry(0.6, 0.5, 0.6);
-            const headMat = new THREE.MeshStandardMaterial({
-                color: 0xff007f,
-                roughness: 0.1,
-                emissive: 0xff0055
-            });
-            playerHead = new THREE.Mesh(headGeo, headMat);
-            playerHead.position.set(0, 2.05, 0);
-            playerGroup.add(playerHead);
-
-            // Back Neon Thruster Light
-            playerLight = new THREE.PointLight(0x00ffff, 2, 8);
-            playerLight.position.set(0, 1.2, 0.5);
-            playerGroup.add(playerLight);
-
-            playerGroup.position.set(LANES[currentLane], 0, 0);
-            scene.add(playerGroup);
-        }
-
-        // --- Procedural Obstacles & Collectibles Spawner ---
-        function spawnObstacles() {
-            if (-distanceTraveled < nextObstacleZ) {
-                const laneIdx = Math.floor(Math.random() * 3);
-                const typeRand = Math.random();
-                const spawnZ = nextObstacleZ - 10;
-
-                if (typeRand < 0.4) {
-                    // Low Barrier (Must Jump over)
-                    createLowBarrier(LANES[laneIdx], spawnZ);
-                } else if (typeRand < 0.7) {
-                    // High Cyber Barrier (Must Slide under)
-                    createHighBarrier(LANES[laneIdx], spawnZ);
-                } else {
-                    // Train Carriage (Block Lane completely, long)
-                    createTrain(LANES[laneIdx], spawnZ);
-                }
-
-                // Spawn Coin Chains along open or obstacles
-                const coinLane = (laneIdx + (Math.random() > 0.5 ? 1 : 2)) % 3;
-                for (let i = 0; i < 4; i++) {
-                    createCoin(LANES[coinLane], spawnZ - (i * 2.5));
-                }
-
-                // Interval between obstacles decreases with speed
-                nextObstacleZ -= (18 + Math.random() * 12);
-            }
-        }
-
-        function createLowBarrier(x, z) {
-            const group = new THREE.Group();
-            const geo = new THREE.BoxGeometry(2.4, 0.9, 0.4);
-            const mat = new THREE.MeshStandardMaterial({
-                color: 0xff0055,
-                emissive: 0x880022,
-                roughness: 0.3
-            });
-            const mesh = new THREE.Mesh(geo, mat);
-            mesh.position.set(0, 0.45, 0);
-            group.add(mesh);
-
-            // Glowing top neon rail
-            const railGeo = new THREE.BoxGeometry(2.5, 0.1, 0.45);
-            const railMat = new THREE.MeshBasicMaterial({ color: 0xff00ff });
-            const rail = new THREE.Mesh(railGeo, railMat);
-            rail.position.set(0, 0.95, 0);
-            group.add(rail);
-
-            group.position.set(x, 0, z);
-            group.userData = { type: 'barrier_low', bbox: new THREE.Box3() };
-            scene.add(group);
-            obstacles.push(group);
-        }
-
-        function createHighBarrier(x, z) {
-            const group = new THREE.Group();
-            
-            // Side Posts
-            const postGeo = new THREE.BoxGeometry(0.2, 2.6, 0.2);
-            const postMat = new THREE.MeshStandardMaterial({ color: 0x00f3ff, emissive: 0x005577 });
-            
-            const leftPost = new THREE.Mesh(postGeo, postMat);
-            leftPost.position.set(-1.1, 1.3, 0);
-            const rightPost = new THREE.Mesh(postGeo, postMat);
-            rightPost.position.set(1.1, 1.3, 0);
-            group.add(leftPost);
-            group.add(rightPost);
-
-            // High Hanging Beam (Clearance underneath requires slide)
-            const beamGeo = new THREE.BoxGeometry(2.4, 1.1, 0.4);
-            const beamMat = new THREE.MeshStandardMaterial({ color: 0xffe600, emissive: 0x665500 });
-            const beam = new THREE.Mesh(beamGeo, beamMat);
-            beam.position.set(0, 2.0, 0);
-            group.add(beam);
-
-            group.position.set(x, 0, z);
-            group.userData = { type: 'barrier_high', bbox: new THREE.Box3() };
-            scene.add(group);
-            obstacles.push(group);
-        }
-
-        function createTrain(x, z) {
-            const group = new THREE.Group();
-            const trainLength = 12;
-
-            const bodyGeo = new THREE.BoxGeometry(2.6, 2.8, trainLength);
-            const bodyMat = new THREE.MeshStandardMaterial({
-                color: 0x110022,
-                roughness: 0.2,
-                metalness: 0.9
-            });
+            // Player Setup (Neon Blocky Runner)
+            const pGroup = new THREE.Group();
+            const bodyGeo = new THREE.BoxGeometry(0.8, 1.2, 0.8);
+            const bodyMat = new THREE.MeshPhongMaterial({ color: 0xff007f, emissive: 0x550022 });
             const body = new THREE.Mesh(bodyGeo, bodyMat);
-            body.position.set(0, 1.4, 0);
-            group.add(body);
+            body.position.y = 0.6;
+            pGroup.add(body);
 
-            // Front Neon Grille
-            const grilleGeo = new THREE.BoxGeometry(2.4, 1.8, 0.1);
-            const grilleMat = new THREE.MeshBasicMaterial({ color: 0x00ffff });
-            const grille = new THREE.Mesh(grilleGeo, grilleMat);
-            grille.position.set(0, 1.2, trainLength / 2 + 0.05);
-            group.add(grille);
+            // Visor
+            const visorGeo = new THREE.BoxGeometry(0.7, 0.3, 0.2);
+            const visorMat = new THREE.MeshBasicMaterial({ color: 0x00f6ff });
+            const visor = new THREE.Mesh(visorGeo, visorMat);
+            visor.position.set(0, 0.9, 0.35);
+            pGroup.add(visor);
 
-            group.position.set(x, 0, z);
-            group.userData = { type: 'train', length: trainLength, bbox: new THREE.Box3() };
-            scene.add(group);
-            obstacles.push(group);
+            player = pGroup;
+            player.position.set(0, 0, 0);
+            scene.add(player);
+
+            window.addEventListener('resize', onWindowResize);
         }
 
-        function createCoin(x, z) {
-            const geo = new THREE.OctahedronGeometry(0.4, 0);
-            const mat = new THREE.MeshStandardMaterial({
-                color: 0xffe600,
-                emissive: 0xaaaa00,
-                metalness: 0.8,
-                roughness: 0.1
-            });
-            const coin = new THREE.Mesh(geo, mat);
-            coin.position.set(x, 1.0, z);
-            scene.add(coin);
-            coins.push(coin);
-        }
+        function spawnObstacle() {
+            const lane = Math.floor(Math.random() * 3);
+            const type = Math.random(); // 0-0.5: Low hurdle, 0.5-0.8: High block, 0.8-1.0: Full Wall
 
-        // Particle Burst Effect on Coin Pickups
-        function createCoinParticles(pos) {
-            for (let i = 0; i < 8; i++) {
-                const pGeo = new THREE.BoxGeometry(0.12, 0.12, 0.12);
-                const pMat = new THREE.MeshBasicMaterial({ color: 0xffe600 });
-                const p = new THREE.Mesh(pGeo, pMat);
-                p.position.copy(pos);
-                p.userData = {
-                    vel: new THREE.Vector3(
-                        (Math.random() - 0.5) * 0.3,
-                        Math.random() * 0.3 + 0.1,
-                        (Math.random() - 0.5) * 0.3
-                    ),
-                    life: 1.0
-                };
-                scene.add(p);
-                particles.push(p);
-            }
-        }
+            let obsGeo, obsMat, yPos, height;
 
-        // --- Controls & Swipes Processing ---
-        function moveLeft() {
-            if (currentLane > 0) {
-                currentLane--;
-                targetX = LANES[currentLane];
-                audio.playTone(400, 'sine', 0.05, 0.05);
-            }
-        }
-
-        function moveRight() {
-            if (currentLane < 2) {
-                currentLane++;
-                targetX = LANES[currentLane];
-                audio.playTone(400, 'sine', 0.05, 0.05);
-            }
-        }
-
-        function jump() {
-            if (!isJumping && !isSliding) {
-                isJumping = true;
-                velocityY = 0.42;
-                audio.jump();
-            }
-        }
-
-        function slide() {
-            if (!isSliding) {
-                isSliding = true;
-                slideTimer = 28; // Frames duration for slide
-                if (isJumping) {
-                    velocityY = -0.4; // Fast drop if airborne
-                }
-                audio.slide();
-            }
-        }
-
-        // Keyboard Handlers
-        window.addEventListener('keydown', (e) => {
-            if (!isRunning) return;
-            switch(e.key) {
-                case 'ArrowLeft': case 'a': case 'A': moveLeft(); break;
-                case 'ArrowRight': case 'd': case 'D': moveRight(); break;
-                case 'ArrowUp': case 'w': case 'W': case ' ': jump(); break;
-                case 'ArrowDown': case 's': case 'S': slide(); break;
-            }
-        });
-
-        // Touch Swipe Gestures
-        let touchStartX = 0;
-        let touchStartY = 0;
-
-        window.addEventListener('touchstart', (e) => {
-            touchStartX = e.changedTouches[0].screenX;
-            touchStartY = e.changedTouches[0].screenY;
-        }, { passive: true });
-
-        window.addEventListener('touchend', (e) => {
-            if (!isRunning) return;
-            const deltaX = e.changedTouches[0].screenX - touchStartX;
-            const deltaY = e.changedTouches[0].screenY - touchStartY;
-
-            if (Math.abs(deltaX) > Math.abs(deltaY)) {
-                // Horizontal Swipe
-                if (Math.abs(deltaX) > 30) {
-                    if (deltaX > 0) moveRight();
-                    else moveLeft();
-                }
+            if (type < 0.5) {
+                // Low barrier (Jump over)
+                height = 0.6;
+                yPos = 0.3;
+                obsMat = new THREE.MeshPhongMaterial({ color: 0x00f6ff, emissive: 0x004455 });
+            } else if (type < 0.8) {
+                // High block (Duck under or dodge)
+                height = 1.2;
+                yPos = 1.4;
+                obsMat = new THREE.MeshPhongMaterial({ color: 0xffaa00, emissive: 0x442200 });
             } else {
-                // Vertical Swipe
-                if (Math.abs(deltaY) > 30) {
-                    if (deltaY < 0) jump();
-                    else slide();
-                }
-            }
-        }, { passive: true });
-
-        // --- Collision Detection Logic ---
-        function checkCollisions() {
-            // Player Bounding Box
-            const playerBox = new THREE.Box3();
-            
-            // Adjust box based on jump/slide state
-            const pPos = playerGroup.position;
-            if (isSliding) {
-                playerBox.setFromCenterAndSize(
-                    new THREE.Vector3(pPos.x, pPos.y + 0.4, pPos.z),
-                    new THREE.Vector3(0.8, 0.7, 0.8)
-                );
-            } else {
-                playerBox.setFromCenterAndSize(
-                    new THREE.Vector3(pPos.x, pPos.y + 1.1, pPos.z),
-                    new THREE.Vector3(0.8, 2.1, 0.8)
-                );
+                // Tall barrier (Must dodge)
+                height = 2.2;
+                yPos = 1.1;
+                obsMat = new THREE.MeshPhongMaterial({ color: 0xff0055, emissive: 0x550011 });
             }
 
-            // Obstacle Collisions
-            for (let obs of obstacles) {
-                obs.userData.bbox.setFromObject(obs);
-                if (playerBox.intersectsBox(obs.userData.bbox)) {
-                    return true; // Crash detected!
-                }
-            }
+            obsGeo = new THREE.BoxGeometry(1.5, height, 1);
+            const obs = new THREE.Mesh(obsGeo, obsMat);
+            obs.position.set(LANES[lane], yPos, -50);
+            obs.userData = { type: type < 0.5 ? 'low' : type < 0.8 ? 'high' : 'tall', height: height, lane: lane };
 
-            // Coin Pickups
-            for (let i = coins.length - 1; i >= 0; i--) {
-                const coin = coins[i];
-                if (coin.position.distanceTo(playerGroup.position) < 1.3) {
-                    // Collect Coin
-                    coinCount++;
-                    score += 50;
-                    coinEl.innerText = coinCount;
-                    createCoinParticles(coin.position);
-                    audio.coin();
-                    scene.remove(coin);
-                    coins.splice(i, 1);
-                }
-            }
-
-            return false;
+            scene.add(obs);
+            obstacles.push(obs);
         }
 
-        // --- Game Loop Update ---
+        function resetGame() {
+            obstacles.forEach(o => scene.remove(o));
+            obstacles = [];
+            currentLane = 1;
+            targetX = 0;
+            player.position.set(0, 0, 0);
+            score = 0;
+            speed = 0.45;
+            scoreEl.innerText = '0';
+            gameActive = true;
+        }
+
+        function gameOver() {
+            gameActive = false;
+            sfx.playCrash();
+            finalScoreEl.innerText = Math.floor(score);
+            if (Math.floor(score) > highscore) {
+                highscore = Math.floor(score);
+                localStorage.setItem('cyber_runner_hi', highscore);
+                highscoreEl.innerText = highscore;
+            }
+            gameoverScreen.classList.remove('hidden');
+        }
+
         function update() {
-            if (!isRunning) return;
+            if (!gameActive) return;
 
-            // 1. Move Player X toward Target Lane smoothly
-            playerGroup.position.x += (targetX - playerGroup.position.x) * 0.25;
-            
-            // Slight roll angle on lane switch
-            playerGroup.rotation.z = (playerGroup.position.x - targetX) * 0.12;
+            // Lane Transition Smoothness
+            targetX = LANES[currentLane];
+            player.position.x += (targetX - player.position.x) * 0.2;
 
-            // 2. Jump Physics Handling
+            // Jump Dynamics
             if (isJumping) {
-                playerY += velocityY;
-                velocityY += gravity;
-
-                if (playerY <= 0) {
-                    playerY = 0;
+                player.position.y += jumpVelocity;
+                jumpVelocity -= 0.025; // Gravity
+                if (player.position.y <= 0) {
+                    player.position.y = 0;
                     isJumping = false;
-                    velocityY = 0;
                 }
             }
 
-            // 3. Slide Pose Handling
-            if (isSliding) {
-                slideTimer--;
-                playerBody.scale.set(1, 0.4, 1);
-                playerHead.position.y = 1.0;
-                if (slideTimer <= 0) {
-                    isSliding = false;
-                    playerBody.scale.set(1, 1, 1);
-                    playerHead.position.y = 2.05;
-                }
+            // Roll Dynamics
+            if (isRolling) {
+                player.scale.y = 0.5;
+            } else {
+                player.scale.y = 1.0;
             }
 
-            playerGroup.position.y = playerY;
+            // Move & Spawn Obstacles
+            spawnTimer++;
+            if (spawnTimer > Math.max(20, 60 - Math.floor(speed * 20))) {
+                spawnObstacle();
+                spawnTimer = 0;
+            }
 
-            // 4. Advance Speed & Distance
-            distanceTraveled += gameSpeed;
-            gameSpeed = baseSpeed + (score / 15000); // Speed scales with score progress
-            score += Math.floor(gameSpeed * 2);
-            scoreEl.innerText = String(score).padStart(6, '0');
-            speedEl.innerText = `${Math.floor(100 + (gameSpeed - baseSpeed) * 120)} MPH`;
+            speed += 0.0001; // Gradual Speed Increase
+            score += speed * 0.5;
+            scoreEl.innerText = Math.floor(score);
 
-            // 5. Move & Animate World Objects
-            gridFloor.position.z = (distanceTraveled % 3) - 30;
-
-            // Move Obstacles
             for (let i = obstacles.length - 1; i >= 0; i--) {
-                const obs = obstacles[i];
-                if (obs.position.z > camera.position.z + 5) {
+                let obs = obstacles[i];
+                obs.position.z += speed;
+
+                // Collision Detection
+                if (Math.abs(obs.position.z - player.position.z) < 0.8) {
+                    if (obs.userData.lane === currentLane) {
+                        let hit = false;
+                        if (obs.userData.type === 'low' && player.position.y < 0.5) hit = true;
+                        if (obs.userData.type === 'high' && !isRolling) hit = true;
+                        if (obs.userData.type === 'tall') hit = true;
+
+                        if (hit) {
+                            gameOver();
+                            return;
+                        }
+                    }
+                }
+
+                // Cleanup Off-Screen
+                if (obs.position.z > 5) {
                     scene.remove(obs);
                     obstacles.splice(i, 1);
                 }
             }
-
-            // Move & Rotate Coins
-            for (let i = coins.length - 1; i >= 0; i--) {
-                const coin = coins[i];
-                coin.rotation.y += 0.08;
-                if (coin.position.z > camera.position.z + 5) {
-                    scene.remove(coin);
-                    coins.splice(i, 1);
-                }
-            }
-
-            // Move Objects toward camera based on speed
-            obstacles.forEach(obs => obs.position.z += gameSpeed);
-            coins.forEach(coin => coin.position.z += gameSpeed);
-
-            // Update Particle FX
-            for (let i = particles.length - 1; i >= 0; i--) {
-                const p = particles[i];
-                p.position.add(p.userData.vel);
-                p.userData.life -= 0.04;
-                p.scale.multiplyScalar(0.92);
-                if (p.userData.life <= 0) {
-                    scene.remove(p);
-                    particles.splice(i, 1);
-                }
-            }
-
-            // 6. Spawn Procedural Obstacles
-            spawnObstacles();
-
-            // 7. Check Crash Collisions
-            if (checkCollisions()) {
-                triggerGameOver();
-            }
         }
 
-        // Animation Render Loop
         function animate() {
             requestAnimationFrame(animate);
             update();
             renderer.render(scene, camera);
         }
 
-        // Reset & Start Game
-        function startGame() {
-            audio.init();
-            
-            // Reset States
-            isRunning = true;
-            score = 0;
-            coinCount = 0;
-            gameSpeed = baseSpeed;
-            distanceTraveled = 0;
-            nextObstacleZ = -30;
-            currentLane = 1;
-            targetX = LANES[1];
-            playerY = 0;
-            isJumping = false;
-            isSliding = false;
+        // Swipe Controls Logic
+        let touchStartX = 0;
+        let touchStartY = 0;
 
-            // Clear Old World Entities
-            obstacles.forEach(o => scene.remove(o));
-            coins.forEach(c => scene.remove(c));
-            particles.forEach(p => scene.remove(p));
-            obstacles = [];
-            coins = [];
-            particles = [];
+        container.addEventListener('touchstart', e => {
+            touchStartX = e.changedTouches[0].screenX;
+            touchStartY = e.changedTouches[0].screenY;
+        }, false);
 
-            // UI Refresh
-            scoreEl.innerText = "000000";
-            coinEl.innerText = "0";
-            
-            document.getElementById('start-screen').classList.add('hidden');
-            document.getElementById('gameover-screen').classList.add('hidden');
-        }
+        container.addEventListener('touchend', e => {
+            if (!gameActive) return;
+            let diffX = e.changedTouches[0].screenX - touchStartX;
+            let diffY = e.changedTouches[0].screenY - touchStartY;
 
-        function triggerGameOver() {
-            isRunning = false;
-            audio.crash();
-
-            // Check & Save Highscore
-            if (score > highscore) {
-                highscore = score;
-                localStorage.setItem('cyber_runner_highscore', highscore);
-                highscoreEl.innerText = String(highscore).padStart(6, '0');
+            if (Math.abs(diffX) > Math.abs(diffY)) {
+                // Horizontal Swipe
+                if (diffX > 30 && currentLane < 2) currentLane++;
+                if (diffX < -30 && currentLane > 0) currentLane--;
+            } else {
+                // Vertical Swipe
+                if (diffY < -30 && !isJumping) {
+                    isJumping = true;
+                    jumpVelocity = 0.35;
+                    sfx.playJump();
+                }
+                if (diffY > 30 && !isRolling) {
+                    isRolling = true;
+                    setTimeout(() => { isRolling = false; }, 600);
+                }
             }
+        }, false);
 
-            // Populate Game Over Screen Stats
-            document.getElementById('go-score').innerText = score;
-            document.getElementById('go-coins').innerText = coinCount;
-            document.getElementById('go-highscore').innerText = highscore;
-
-            // Show Game Over Modal
-            document.getElementById('gameover-screen').classList.remove('hidden');
-        }
+        // Keyboard Controls (Desktop Support)
+        window.addEventListener('keydown', e => {
+            if (!gameActive) return;
+            if ((e.key === 'ArrowLeft' || e.key === 'a') && currentLane > 0) currentLane--;
+            if ((e.key === 'ArrowRight' || e.key === 'd') && currentLane < 2) currentLane++;
+            if ((e.key === 'ArrowUp' || e.key === 'w') && !isJumping) {
+                isJumping = true;
+                jumpVelocity = 0.35;
+                sfx.playJump();
+            }
+            if ((e.key === 'ArrowDown' || e.key === 's') && !isRolling) {
+                isRolling = true;
+                setTimeout(() => { isRolling = false; }, 600);
+            }
+        });
 
         function onWindowResize() {
-            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.aspect = container.clientWidth / container.clientHeight;
             camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setSize(container.clientWidth, container.clientHeight);
         }
 
-        // --- DOM Event Bindings ---
-        window.onload = () => {
-            initEngine();
-            animate();
+        startBtn.addEventListener('click', () => {
+            sfx.init();
+            startScreen.classList.add('hidden');
+            resetGame();
+        });
 
-            document.getElementById('start-btn').addEventListener('click', startGame);
-            document.getElementById('restart-btn').addEventListener('click', startGame);
+        restartBtn.addEventListener('click', () => {
+            gameoverScreen.classList.add('hidden');
+            resetGame();
+        });
 
-            // Audio Toggle Button
-            document.getElementById('sound-toggle').addEventListener('click', () => {
-                audio.enabled = !audio.enabled;
-                document.getElementById('sound-icon').innerText = audio.enabled ? '🔊' : '🔇';
-                document.getElementById('sound-toggle').classList.toggle('text-cyan-400', audio.enabled);
-                document.getElementById('sound-toggle').classList.toggle('text-slate-500', !audio.enabled);
-            });
-
-            // CRT Filter Toggle
-            document.getElementById('crt-toggle').addEventListener('click', () => {
-                document.body.classList.toggle('crt');
-            });
-        };
+        initThree();
+        animate();
     </script>
 </body>
 </html>
